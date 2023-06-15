@@ -4,6 +4,9 @@
 #include <pthread.h>
 #include <math.h>
 #include <GL/glut.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <string.h>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
