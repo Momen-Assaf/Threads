@@ -1,2 +1,2 @@
 # Project 3 of Real-Time Course
-This project is about threds
+This project is about threads
