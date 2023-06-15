@@ -5,7 +5,7 @@ typedef struct {
     float y;
     float angle;
     int speed;
-    int phermone;
+    float pheromone;
 } Ant;
 
 typedef struct {
@@ -16,7 +16,7 @@ typedef struct {
 int numAnts = 50;
 int foodSpawnInterval = 1; // Default: 1 minute
 int foodEatInterval = 55;
-int phoeromoneInterval_0 = 50,phoeromoneInterval_1 = 25;
+float pheromoneInterval_0 = 50,pheromoneInterval_1 = 25;
 Ant* ants;
 Food* foods;
 int numFoods = 0;
@@ -31,6 +31,7 @@ void initializeAnts() {
         ants[i].y = rand() % (WINDOW_HEIGHT - ANT_HEIGHT);
         ants[i].angle = rand() % 360;
         ants[i].speed = rand() % 10 + 1;
+        ants[i].pheromone = 0;
     }
 }
 
@@ -38,8 +39,40 @@ void initializeFoods() {
     foods = malloc(numFoods * sizeof(Food));
 }
 
+void drawCircle(float centerX, float centerY, float outerRadius) {
+    
+
+    // glColor4f(0.8f, 0.6f, 1.0f, 0.5f); // Light purple color
+
+    // glBegin(GL_TRIANGLE_STRIP);
+    // for (int j = 0; j <= 360; j++)
+    // {
+    //     float radians = j * (M_PI / 180.0);
+    //     float x = centerX + radius * cos(radians);
+    //     float y = centerY + radius * sin(radians);
+    //     glVertex2f(x, y);
+
+    //     x = centerX + (radius + 5.0) * cos(radians);
+    //     y = centerY + (radius + 5.0) * sin(radians);
+    //     glVertex2f(x, y);
+    // }
+    // glEnd();
+    // float innerRadius = outerRadius-5;
+    // glBegin(GL_TRIANGLE_STRIP);
+    //     for (int j = 0; j <= 360; j++) {
+    //         float radians = j * (M_PI / 180.0);
+    //         float innerX = centerX + innerRadius * cos(radians);
+    //         float innerY = centerY + innerRadius * sin(radians);
+    //         glVertex2f(innerX, innerY);
+
+    //         float outerX = centerX + outerRadius * cos(radians);
+    //         float outerY = centerY + outerRadius * sin(radians);
+    //         glVertex2f(outerX, outerY);
+    //     }
+    //     glEnd();
+}
+
 void foodDetected(intptr_t antIndex, int target){
-    ants[antIndex].phermone = phoeromoneInterval_0;
 
     float dx = foods[target].x - ants[antIndex].x;
     float dy = foods[target].y - ants[antIndex].y;
@@ -49,17 +82,15 @@ void foodDetected(intptr_t antIndex, int target){
     
 }
 
-void phoeromoneDetected(intptr_t antIndex, int target){
-    ants[antIndex].phermone = phoeromoneInterval_1;
+void pheromoneDetected(intptr_t antIndex, float distance){
 
-    float dx = ants[target].x - ants[antIndex].x;
-    float dy = ants[target].y - ants[antIndex].y;
-
-    float targetAngle = atan2(dy,dx) * (180/M_PI);
-    ants[antIndex].angle = targetAngle;
+    ants[antIndex].pheromone = pheromoneInterval_1;
+    if(ants[antIndex].pheromone != pheromoneInterval_0){
+        ants[antIndex].pheromone += pheromoneInterval_0/distance;
+    }
 }
 
-float calculateDistance(int antIndex1, int antIndex2) {
+float calculateDistance(intptr_t antIndex1, intptr_t antIndex2) {
     float dx = ants[antIndex1].x - ants[antIndex2].x;
     float dy = ants[antIndex1].y - ants[antIndex2].y;
     return sqrt(dx * dx + dy * dy);
@@ -68,25 +99,30 @@ float calculateDistance(int antIndex1, int antIndex2) {
 void calculateFoodDistance(intptr_t antIndex){
     pthread_mutex_lock(&antMutex);
     pthread_mutex_lock(&foodMutex);
-
+    
+    float distance;
     for(int i = 0; i < numFoods; i++){
             float dx = ants[antIndex].x - foods[i].x;
             float dy = ants[antIndex].y - foods[i].y;
-            float distance = sqrt( dx*dx + dy*dy);
+            distance = sqrt( dx*dx + dy*dy);
 
             if( distance < foodEatInterval){
+                ants[antIndex].pheromone = pheromoneInterval_0;
                 foodDetected(antIndex,i);
             }
             
         }
-    for(int i = 0; i < numAnts; i++){
-        if( i != antIndex){
-            float antsDistance = calculateDistance(antIndex,i);
-            if(antsDistance < ants[i].phermone){
-                phoeromoneDetected(antIndex,i);
+    for(int i = 0; i < numFoods; i++){
+        for(int j = 0; j < numAnts; j++){
+            if( j != antIndex){
+                float antsDistance = calculateDistance(antIndex,j);
+                if(antsDistance < ants[j].pheromone) {
+                    foodDetected(antIndex,i);
+                    //pheromoneDetected(antIndex,distance);
+                }
             }
-        }
-    }  
+        } 
+    }
     pthread_mutex_unlock(&foodMutex);
     pthread_mutex_unlock(&antMutex);
 }
@@ -97,7 +133,7 @@ void* updateAntPosition(void* arg) {
 
     while (1) {
         pthread_mutex_lock(&antMutex);
-
+        
         float radians = ants[antIndex].angle * (M_PI / 180.0);
         float dx = ants[antIndex].speed * cos(radians);
         float dy = ants[antIndex].speed * sin(radians);
@@ -148,20 +184,22 @@ void drawAnts() {
         float top = ants[i].y + ANT_HEIGHT;
         float bottom = ants[i].y;
 
+        glColor3f(0.0f, 0.0f, 1.0f); // Blue color for ants
+
         glRectf(left, bottom, right, top);
 
         // Draw the ant head (circle)
-        float centerX = ants[i].x + ANT_WIDTH / 2.0;
-        float centerY = ants[i].y + ANT_HEIGHT / 2.0;
-        float radius = ANT_WIDTH / 4.0;
+        float headCenterX = ants[i].x + ANT_WIDTH / 2.0;
+        float headCenterY = ants[i].y + ANT_HEIGHT / 2.0;
+        float headRadius = ANT_WIDTH / 4.0;
 
         glColor3f(1.0f, 0.0f, 0.0f); // Red color for ant head
 
         glBegin(GL_POLYGON);
         for (int j = 0; j < 360; j++) {
             float radians = j * (M_PI / 180.0);
-            float x = centerX + radius * cos(radians);
-            float y = centerY + radius * sin(radians);
+            float x = headCenterX + headRadius * cos(radians);
+            float y = headCenterY + headRadius * sin(radians);
             glVertex2f(x, y);
         }
         glEnd();
@@ -172,18 +210,37 @@ void drawAnts() {
     pthread_mutex_lock(&foodMutex);
 
     for (int i = 0; i < numFoods; i++) {
-        glColor3f(0.0f, 1.0f, 0.0f); // Green color for food
-
-        // Draw the food (circle)
+        // Draw the ring around the food
         float centerX = foods[i].x + ANT_WIDTH / 2.0;
         float centerY = foods[i].y + ANT_HEIGHT / 2.0;
-        float radius = ANT_WIDTH / 4.0;
+        float innerRadius = foodEatInterval - 5;
+        float outerRadius = foodEatInterval;
+
+        glColor4f(0.7f, 0.9f, 0.7f, 0.5f); // Pale green color with transparency
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for (int j = 0; j <= 360; j++) {
+            float radians = j * (M_PI / 180.0);
+            float innerX = centerX + innerRadius * cos(radians);
+            float innerY = centerY + innerRadius * sin(radians);
+            glVertex2f(innerX, innerY);
+
+            float outerX = centerX + outerRadius * cos(radians);
+            float outerY = centerY + outerRadius * sin(radians);
+            glVertex2f(outerX, outerY);
+        }
+        glEnd();
+
+        // Draw the food (circle)
+        float foodRadius = ANT_WIDTH / 4.0;
+
+        glColor3f(0.0f, 1.0f, 0.0f); // Green color for food
 
         glBegin(GL_POLYGON);
         for (int j = 0; j < 360; j++) {
             float radians = j * (M_PI / 180.0);
-            float x = centerX + radius * cos(radians);
-            float y = centerY + radius * sin(radians);
+            float x = centerX + foodRadius * cos(radians);
+            float y = centerY + foodRadius * sin(radians);
             glVertex2f(x, y);
         }
         glEnd();
@@ -194,7 +251,6 @@ void drawAnts() {
     glFlush();
     glutSwapBuffers();
 }
-
 void reshape(int width, int height) {
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
@@ -252,16 +308,16 @@ int main(int argc, char** argv) {
             token = strtok(NULL,",");
             foodEatInterval = atoi(token);
             token = strtok(NULL,",");
-            phoeromoneInterval_0 = atoi(token);
+            pheromoneInterval_0 = atoi(token);
             token = strtok(NULL,",");
-            phoeromoneInterval_1 = atoi(token);
+            pheromoneInterval_1 = atoi(token);
           }
         }
     printf("The number of ants:%d\n",numAnts);
     printf("The food spawn interval is:%d\n",foodSpawnInterval);
     printf("The food eat interval is:%d\n",foodEatInterval);
-    printf("The pheromone interval 1 is:%d\n",phoeromoneInterval_0);
-    printf("The pheromone interval 2 is:%d\n",phoeromoneInterval_1);
+    printf("The pheromone interval 1 is:%.2f\n",pheromoneInterval_0);
+    printf("The pheromone interval 2 is:%.2f\n",pheromoneInterval_1);
 
 
     srand(time(NULL));
