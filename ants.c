@@ -15,7 +15,7 @@ typedef struct {
 
 int numAnts = 50;
 int foodSpawnInterval = 1; // Default: 1 minute
-int foodEatInterval = 5;
+int foodEatInterval = 55;
 int phoeromoneInterval_0 = 50,phoeromoneInterval_1 = 25;
 Ant* ants;
 Food* foods;
@@ -38,15 +38,34 @@ void initializeFoods() {
     foods = malloc(numFoods * sizeof(Food));
 }
 
-void foodDetected(intptr_t antIndex, int i){
-    float dx = foods[i].x - ants[antIndex].x;
-    float dy = foods[i].y - ants[antIndex].y;
+void foodDetected(intptr_t antIndex, int target){
+    ants[antIndex].phermone = phoeromoneInterval_0;
+
+    float dx = foods[target].x - ants[antIndex].x;
+    float dy = foods[target].y - ants[antIndex].y;
+
+    float targetAngle = atan2(dy,dx) * (180/M_PI);
+    ants[antIndex].angle = targetAngle;
+    
+}
+
+void phoeromoneDetected(intptr_t antIndex, int target){
+    ants[antIndex].phermone = phoeromoneInterval_1;
+
+    float dx = ants[target].x - ants[antIndex].x;
+    float dy = ants[target].y - ants[antIndex].y;
 
     float targetAngle = atan2(dy,dx) * (180/M_PI);
     ants[antIndex].angle = targetAngle;
 }
 
-void calculateDistance(intptr_t antIndex){
+float calculateDistance(int antIndex1, int antIndex2) {
+    float dx = ants[antIndex1].x - ants[antIndex2].x;
+    float dy = ants[antIndex1].y - ants[antIndex2].y;
+    return sqrt(dx * dx + dy * dy);
+}
+
+void calculateFoodDistance(intptr_t antIndex){
     pthread_mutex_lock(&antMutex);
     pthread_mutex_lock(&foodMutex);
 
@@ -57,10 +76,17 @@ void calculateDistance(intptr_t antIndex){
 
             if( distance < foodEatInterval){
                 foodDetected(antIndex,i);
-                ants[antIndex].phermone = phoeromoneInterval_0;
             }
             
         }
+    for(int i = 0; i < numAnts; i++){
+        if( i != antIndex){
+            float antsDistance = calculateDistance(antIndex,i);
+            if(antsDistance < ants[i].phermone){
+                phoeromoneDetected(antIndex,i);
+            }
+        }
+    }  
     pthread_mutex_unlock(&foodMutex);
     pthread_mutex_unlock(&antMutex);
 }
@@ -101,7 +127,7 @@ void* updateAntPosition(void* arg) {
         }
 
         pthread_mutex_unlock(&antMutex);
-        calculateDistance(antIndex);
+        calculateFoodDistance(antIndex);
         usleep(UPDATE_INTERVAL_MS * 1000); // Delay to control the speed of ants
     }
 
@@ -196,11 +222,6 @@ void spawnFood(int value) {
     
 }
 
-void drawRange(float radius){
-
-}
-    
-
 int main(int argc, char** argv) {
     if (argc >= 2) {
         numAnts = atoi(argv[1]);
@@ -222,7 +243,7 @@ int main(int argc, char** argv) {
           perror("Error opening user_defined.txt file");
         }
         else{
-          while(fgets(buffer,36,user_file) != NULL)
+          while(fgets(buffer,128,user_file) != NULL)
           {
             token = strtok(buffer,",");  
             numAnts = atoi(token);
