@@ -84,36 +84,38 @@ void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2)
     float dx = ants[antIndex].x - foods[foodIndex].x;
     float dy = ants[antIndex].y - foods[foodIndex].y;
     float distance = sqrt(dx * dx + dy * dy);
-
-    if(ants[antIndex2].pheromone == pheromoneInterval_0){
-        foodDetected(antIndex,ants[antIndex2].foodDetectIndex);
-        return;
-    }
-    // Update ant direction based on pheromone level
-    else if (ants[antIndex].pheromone >= pheromoneInterval_1 && ants[antIndex].pheromone < pheromoneInterval_0){
-        // Calculate the angle towards the food
-        float dx_food = foods[foodIndex].x - ants[antIndex].x;
-        float dy_food = foods[foodIndex].y - ants[antIndex].y;
-        float targetAngle = atan2(dy_food, dx_food) * (180 / M_PI);
-
-        // Change the ant's angle towards the food
-        float angleDiff = targetAngle - ants[antIndex].angle;
-        if(ants[antIndex2].pheromone < pheromoneInterval_2){
-            ants[antIndex].angle += 0;
-        }else{
-            if (angleDiff > 5.0 ){
-                ants[antIndex].angle += 5.0;
-            }else if (angleDiff < -5.0 ){
-                ants[antIndex].angle -= 5.0;
-            }
+    if(ants[antIndex].pheromone < pheromoneInterval_0){
+        if(ants[antIndex2].pheromone >= pheromoneInterval_0){
+            foodDetected(antIndex,ants[antIndex2].foodDetectIndex);
+            return;
         }
-        ants[antIndex].pheromone += (pheromoneInterval_0 * ants[antIndex].speed)/(distance+1);
+        // Update ant direction based on pheromone level
+        else{
+            // Calculate the angle towards the food
+            float dx_food = foods[foodIndex].x - ants[antIndex].x;
+            float dy_food = foods[foodIndex].y - ants[antIndex].y;
+            float targetAngle = atan2(dy_food, dx_food) * (180 / M_PI);
 
+            // Change the ant's angle towards the food
+            float angleDiff = targetAngle - ants[antIndex].angle;
+            if(ants[antIndex2].pheromone <= pheromoneInterval_2){
+                ants[antIndex].angle += 0;
+            }else{
+                if (angleDiff > 5.0 ){
+                    ants[antIndex].angle += 5.0;
+                }else if (angleDiff < -5.0 ){
+                    ants[antIndex].angle -= 5.0;
+                }
+            }
+            ants[antIndex].pheromone += (pheromoneInterval_0 * ants[antIndex].speed)/(distance+1);
+        }
     }
     else{
-        ants[antIndex].pheromone = pheromoneInterval_0;
-        foodDetected(antIndex,foodIndex);
+       ants[antIndex].pheromone = pheromoneInterval_0;
+            foodDetected(antIndex,foodIndex); 
+            return;
     }
+    
 }
 
 float calculateDistance(intptr_t antIndex1, intptr_t antIndex2) {
