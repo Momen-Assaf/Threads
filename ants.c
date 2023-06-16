@@ -88,6 +88,9 @@ void pheromoneDetected(intptr_t antIndex, float distance){
     if(ants[antIndex].pheromone < pheromoneInterval_0){
         ants[antIndex].pheromone += pheromoneInterval_0/distance;
     }
+    else{
+        ants[antIndex].phermone = phermoneInterval_0;
+    }
 }
 
 float calculateDistance(intptr_t antIndex1, intptr_t antIndex2) {
