@@ -85,8 +85,11 @@ void foodDetected(intptr_t antIndex, int target){
 void pheromoneDetected(intptr_t antIndex, float distance){
 
     ants[antIndex].pheromone = pheromoneInterval_1;
-    if(ants[antIndex].pheromone != pheromoneInterval_0){
+    if(ants[antIndex].pheromone > pheromoneInterval_0){
         ants[antIndex].pheromone += pheromoneInterval_0/distance;
+    }
+    else{
+        ants[antIndex].pheromone = pheromoneInterval_0;
     }
 }
 
@@ -95,38 +98,39 @@ float calculateDistance(intptr_t antIndex1, intptr_t antIndex2) {
     float dy = ants[antIndex1].y - ants[antIndex2].y;
     return sqrt(dx * dx + dy * dy);
 }
-
-void calculateFoodDistance(intptr_t antIndex){
+void calculateFoodDistance(intptr_t antIndex) {
     pthread_mutex_lock(&antMutex);
     pthread_mutex_lock(&foodMutex);
-    
-    float distance;
-    for(int i = 0; i < numFoods; i++){
-            float dx = ants[antIndex].x - foods[i].x;
-            float dy = ants[antIndex].y - foods[i].y;
-            distance = sqrt( dx*dx + dy*dy);
 
-            if( distance < foodEatInterval){
-                ants[antIndex].pheromone = pheromoneInterval_0;
-                foodDetected(antIndex,i);
-            }
-            
+    float distance;
+    for (int i = 0; i < numFoods; i++) {
+        float dx = ants[antIndex].x - foods[i].x;
+        float dy = ants[antIndex].y - foods[i].y;
+        distance = sqrt(dx * dx + dy * dy);
+
+        if (distance < foodEatInterval) {
+            ants[antIndex].pheromone = pheromoneInterval_0;
+            foodDetected(antIndex, i);
+            pthread_mutex_unlock(&foodMutex);
+            pthread_mutex_unlock(&antMutex);
+            return; // Return early if the ant is already on a food
         }
-    for(int i = 0; i < numFoods; i++){
-        for(int j = 0; j < numAnts; j++){
-            if( j != antIndex){
-                float antsDistance = calculateDistance(antIndex,j);
-                if(antsDistance < ants[j].pheromone) {
-                    foodDetected(antIndex,i);
-                    //pheromoneDetected(antIndex,distance);
+    }
+
+    for (int i = 0; i < numFoods; i++) {
+        for (int j = 0; j < numAnts; j++) {
+            if (j != antIndex) {
+                float antsDistance = calculateDistance(antIndex, j);
+                if (antsDistance < ants[j].pheromone) {
+                    foodDetected(antIndex, i);
                 }
             }
-        } 
+        }
     }
+
     pthread_mutex_unlock(&foodMutex);
     pthread_mutex_unlock(&antMutex);
 }
-
 
 void* updateAntPosition(void* arg) {
     intptr_t antIndex = (intptr_t)arg;
