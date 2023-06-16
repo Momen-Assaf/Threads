@@ -85,7 +85,7 @@ void foodDetected(intptr_t antIndex, int target){
 void pheromoneDetected(intptr_t antIndex, float distance){
 
     ants[antIndex].pheromone = pheromoneInterval_1;
-    if(ants[antIndex].pheromone != pheromoneInterval_0){
+    if(ants[antIndex].pheromone < pheromoneInterval_0){
         ants[antIndex].pheromone += pheromoneInterval_0/distance;
     }
 }
