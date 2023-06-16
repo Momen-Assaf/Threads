@@ -17,7 +17,7 @@ typedef struct {
 int numAnts = 50;
 int foodSpawnInterval = 1; // Default: 1 minute
 int foodEatInterval = 55;
-float pheromoneInterval_0 = 50,pheromoneInterval_1 = 25;
+float pheromoneInterval_0 = 50,pheromoneInterval_1 = 25,pheromoneInterval_2 = 10;
 Ant* ants;
 Food* foods;
 int numFoods = 0;
@@ -92,13 +92,14 @@ void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2)
         float angleDiff = targetAngle - ants[antIndex].angle;
         if (ants[antIndex2].pheromone == pheromoneInterval_0){
             foodDetected(antIndex,foodIndex);
+        }else if(ants[antIndex2].pheromone < pheromoneInterval_2){
+            ants[antIndex].angle += 0;
         }else if (angleDiff > 5.0 ){
             ants[antIndex].angle += 5.0;
-        } else if (angleDiff < -5.0 ) {
+        }else if (angleDiff < -5.0 ){
             ants[antIndex].angle -= 5.0;
         }
     }
-
 
     if(ants[antIndex].pheromone < pheromoneInterval_0){
         ants[antIndex].pheromone += (pheromoneInterval_0 * ants[antIndex].speed)/(distance+1);
@@ -349,6 +350,8 @@ int main(int argc, char** argv) {
             pheromoneInterval_0 = atoi(token);
             token = strtok(NULL,",");
             pheromoneInterval_1 = atoi(token);
+            token = strtok(NULL,",");
+            pheromoneInterval_2 = atoi(token);
           }
         }
     printf("The number of ants:%d\n",numAnts);
@@ -356,7 +359,7 @@ int main(int argc, char** argv) {
     printf("The food eat interval is:%d\n",foodEatInterval);
     printf("The pheromone interval 1 is:%.2f\n",pheromoneInterval_0);
     printf("The pheromone interval 2 is:%.2f\n",pheromoneInterval_1);
-
+    printf("The pheromone dismiss interval is:%.2f\n",pheromoneInterval_2);
 
     srand(time(NULL));
 
