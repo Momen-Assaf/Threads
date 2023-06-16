@@ -72,15 +72,42 @@ void foodDetected(intptr_t antIndex, int target){
     
 }
 
-void pheromoneDetected(intptr_t antIndex, float distance){
+void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2){
 
     ants[antIndex].pheromone = pheromoneInterval_1;
     ants[antIndex].pherDetect = 1;
+
+    float dx = ants[antIndex].x - foods[foodIndex].x;
+    float dy = ants[antIndex].y - foods[foodIndex].y;
+    float distance = sqrt(dx * dx + dy * dy);
+
+    // Update ant direction based on pheromone level
+    if (ants[antIndex].pheromone >= pheromoneInterval_1 && ants[antIndex].pheromone < pheromoneInterval_0) {
+        // Calculate the angle towards the food
+        float dx_food = foods[foodIndex].x - ants[antIndex].x;
+        float dy_food = foods[foodIndex].y - ants[antIndex].y;
+        float targetAngle = atan2(dy_food, dx_food) * (180 / M_PI);
+
+        // Change the ant's angle towards the food
+        float angleDiff = targetAngle - ants[antIndex].angle;
+        if (ants[antIndex2].pheromone == pheromoneInterval_0){
+            foodDetected(antIndex,foodIndex);
+        }else if (angleDiff > 5.0 ){
+            ants[antIndex].angle += 5.0;
+        } else if (angleDiff < -5.0 ) {
+            ants[antIndex].angle -= 5.0;
+        } else {
+            foodDetected(antIndex,foodIndex);
+        }
+    }
+
+
     if(ants[antIndex].pheromone < pheromoneInterval_0){
-        ants[antIndex].pheromone += (pheromoneInterval_0*ants[antIndex].speed)/(distance+1);
+        ants[antIndex].pheromone += (pheromoneInterval_0 * ants[antIndex].speed)/(distance+1);
     }
     else{
         ants[antIndex].pheromone = pheromoneInterval_0;
+        foodDetected(antIndex,foodIndex);
     }
 }
 
@@ -113,8 +140,8 @@ void calculateFoodDistance(intptr_t antIndex) {
             if (j != antIndex) {
                 float antsDistance = calculateDistance(antIndex, j);
                 if (antsDistance < ants[j].pheromone) {
-                    pheromoneDetected(antIndex,antsDistance);
-                    foodDetected(antIndex, i);
+                    pheromoneDetected(antIndex,i,j);
+                    //foodDetected(antIndex, i);
                 }
             }
         }
