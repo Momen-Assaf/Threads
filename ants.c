@@ -7,6 +7,7 @@ typedef struct {
     int speed;
     float pheromone;
     int pherDetect;
+    intptr_t foodDetectIndex;
 } Ant;
 
 typedef struct {
@@ -15,7 +16,7 @@ typedef struct {
 } Food;
 
 int numAnts = 50;
-int foodSpawnInterval = 1; // Default: 1 minute
+float foodSpawnInterval = 0.5; // Default: 1 minute
 int foodEatInterval = 55;
 float pheromoneInterval_0 = 50,pheromoneInterval_1 = 25,pheromoneInterval_2 = 10;
 Ant* ants;
@@ -34,7 +35,7 @@ void initializeAnts() {
         ants[i].speed = rand() % 10 + 1;
         ants[i].pheromone = 0;
         ants[i].pherDetect = 0;
-
+        
     }
 }
 
@@ -62,13 +63,15 @@ void drawCircle(float centerX, float centerY, float outerRadius) {
         glEnd();
 }
 
-void foodDetected(intptr_t antIndex, int target){
+void foodDetected(intptr_t antIndex, intptr_t foodIndex){
 
-    float dx = foods[target].x - ants[antIndex].x;
-    float dy = foods[target].y - ants[antIndex].y;
+    ants[antIndex].foodDetectIndex = foodIndex;
+    float dx = foods[foodIndex].x - ants[antIndex].x;
+    float dy = foods[foodIndex].y - ants[antIndex].y;
 
     float targetAngle = atan2(dy,dx) * (180/M_PI);
     ants[antIndex].angle = targetAngle;
+    
     
 }
 
@@ -76,13 +79,18 @@ void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2)
 
     ants[antIndex].pheromone = pheromoneInterval_1;
     ants[antIndex].pherDetect = 1;
+    ants[antIndex].foodDetectIndex = ants[antIndex2].foodDetectIndex;
 
     float dx = ants[antIndex].x - foods[foodIndex].x;
     float dy = ants[antIndex].y - foods[foodIndex].y;
     float distance = sqrt(dx * dx + dy * dy);
 
+    if(ants[antIndex2].pheromone == pheromoneInterval_0){
+        foodDetected(antIndex,ants[antIndex2].foodDetectIndex);
+        return;
+    }
     // Update ant direction based on pheromone level
-    if (ants[antIndex].pheromone >= pheromoneInterval_1 && ants[antIndex].pheromone < pheromoneInterval_0) {
+    else if (ants[antIndex].pheromone >= pheromoneInterval_1 && ants[antIndex].pheromone < pheromoneInterval_0){
         // Calculate the angle towards the food
         float dx_food = foods[foodIndex].x - ants[antIndex].x;
         float dy_food = foods[foodIndex].y - ants[antIndex].y;
@@ -90,19 +98,17 @@ void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2)
 
         // Change the ant's angle towards the food
         float angleDiff = targetAngle - ants[antIndex].angle;
-        if (ants[antIndex2].pheromone == pheromoneInterval_0){
-            foodDetected(antIndex,foodIndex);
-        }else if(ants[antIndex2].pheromone < pheromoneInterval_2){
+        if(ants[antIndex2].pheromone < pheromoneInterval_2){
             ants[antIndex].angle += 0;
-        }else if (angleDiff > 5.0 ){
-            ants[antIndex].angle += 5.0;
-        }else if (angleDiff < -5.0 ){
-            ants[antIndex].angle -= 5.0;
+        }else{
+            if (angleDiff > 5.0 ){
+                ants[antIndex].angle += 5.0;
+            }else if (angleDiff < -5.0 ){
+                ants[antIndex].angle -= 5.0;
+            }
         }
-    }
-
-    if(ants[antIndex].pheromone < pheromoneInterval_0){
         ants[antIndex].pheromone += (pheromoneInterval_0 * ants[antIndex].speed)/(distance+1);
+
     }
     else{
         ants[antIndex].pheromone = pheromoneInterval_0;
@@ -127,6 +133,7 @@ void calculateFoodDistance(intptr_t antIndex) {
 
         if (distance < foodEatInterval) {
             ants[antIndex].pheromone = pheromoneInterval_0;
+            ants[antIndex].foodDetectIndex = i;
             foodDetected(antIndex, i);
             pthread_mutex_unlock(&foodMutex);
             pthread_mutex_unlock(&antMutex);
@@ -343,7 +350,8 @@ int main(int argc, char** argv) {
             token = strtok(buffer,",");  
             numAnts = atoi(token);
             token = strtok(NULL, ",");
-            foodSpawnInterval = atoi(token);
+            //foodSpawnInterval = atof(token);
+            foodSpawnInterval = 0.2;
             token = strtok(NULL,",");
             foodEatInterval = atoi(token);
             token = strtok(NULL,",");
@@ -355,7 +363,7 @@ int main(int argc, char** argv) {
           }
         }
     printf("The number of ants:%d\n",numAnts);
-    printf("The food spawn interval is:%d\n",foodSpawnInterval);
+    printf("The food spawn interval is:%.2f\n",foodSpawnInterval);
     printf("The food eat interval is:%d\n",foodEatInterval);
     printf("The pheromone interval 1 is:%.2f\n",pheromoneInterval_0);
     printf("The pheromone interval 2 is:%.2f\n",pheromoneInterval_1);
