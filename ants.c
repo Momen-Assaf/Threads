@@ -6,6 +6,7 @@ typedef struct {
     float angle;
     int speed;
     float pheromone;
+    int pherDetect;
 } Ant;
 
 typedef struct {
@@ -32,6 +33,8 @@ void initializeAnts() {
         ants[i].angle = rand() % 360;
         ants[i].speed = rand() % 10 + 1;
         ants[i].pheromone = 0;
+        ants[i].pherDetect = 0;
+
     }
 }
 
@@ -44,7 +47,7 @@ void drawCircle(float centerX, float centerY, float outerRadius) {
 
     glColor4f(0.8f, 0.6f, 1.0f, 0.5f); // Light purple color
 
-    float innerRadius = outerRadius-5;
+    float innerRadius = outerRadius-2;
     glBegin(GL_TRIANGLE_STRIP);
         for (int j = 0; j <= 360; j++) {
             float radians = j * (M_PI / 180.0);
@@ -72,8 +75,9 @@ void foodDetected(intptr_t antIndex, int target){
 void pheromoneDetected(intptr_t antIndex, float distance){
 
     ants[antIndex].pheromone = pheromoneInterval_1;
-    if(ants[antIndex].pheromone > pheromoneInterval_0){
-        ants[antIndex].pheromone += pheromoneInterval_0/distance;
+    ants[antIndex].pherDetect = 1;
+    if(ants[antIndex].pheromone < pheromoneInterval_0){
+        ants[antIndex].pheromone += (pheromoneInterval_0*ants[antIndex].speed)/(distance+1);
     }
     else{
         ants[antIndex].pheromone = pheromoneInterval_0;
@@ -109,6 +113,7 @@ void calculateFoodDistance(intptr_t antIndex) {
             if (j != antIndex) {
                 float antsDistance = calculateDistance(antIndex, j);
                 if (antsDistance < ants[j].pheromone) {
+                    pheromoneDetected(antIndex,antsDistance);
                     foodDetected(antIndex, i);
                 }
             }
@@ -201,6 +206,13 @@ void drawAnts() {
             float radius = ants[i].pheromone;
 
             drawCircle(centerX, centerY, radius);
+        }
+        if(ants[i].pherDetect == 1){
+            float centerX = ants[i].x + ANT_WIDTH / 2.0;
+            float centerY = ants[i].y + ANT_HEIGHT / 2.0;
+            float radius = ants[i].pheromone;
+
+            drawCircle(centerX, centerY, radius);            
         }
 
     }
