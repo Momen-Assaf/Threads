@@ -96,8 +96,6 @@ void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2)
             ants[antIndex].angle += 5.0;
         } else if (angleDiff < -5.0 ) {
             ants[antIndex].angle -= 5.0;
-        } else {
-            foodDetected(antIndex,foodIndex);
         }
     }
 
