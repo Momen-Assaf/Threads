@@ -42,34 +42,21 @@ void initializeFoods() {
 void drawCircle(float centerX, float centerY, float outerRadius) {
     
 
-    // glColor4f(0.8f, 0.6f, 1.0f, 0.5f); // Light purple color
+    glColor4f(0.8f, 0.6f, 1.0f, 0.5f); // Light purple color
 
-    // glBegin(GL_TRIANGLE_STRIP);
-    // for (int j = 0; j <= 360; j++)
-    // {
-    //     float radians = j * (M_PI / 180.0);
-    //     float x = centerX + radius * cos(radians);
-    //     float y = centerY + radius * sin(radians);
-    //     glVertex2f(x, y);
+    float innerRadius = outerRadius-5;
+    glBegin(GL_TRIANGLE_STRIP);
+        for (int j = 0; j <= 360; j++) {
+            float radians = j * (M_PI / 180.0);
+            float innerX = centerX + innerRadius * cos(radians);
+            float innerY = centerY + innerRadius * sin(radians);
+            glVertex2f(innerX, innerY);
 
-    //     x = centerX + (radius + 5.0) * cos(radians);
-    //     y = centerY + (radius + 5.0) * sin(radians);
-    //     glVertex2f(x, y);
-    // }
-    // glEnd();
-    // float innerRadius = outerRadius-5;
-    // glBegin(GL_TRIANGLE_STRIP);
-    //     for (int j = 0; j <= 360; j++) {
-    //         float radians = j * (M_PI / 180.0);
-    //         float innerX = centerX + innerRadius * cos(radians);
-    //         float innerY = centerY + innerRadius * sin(radians);
-    //         glVertex2f(innerX, innerY);
-
-    //         float outerX = centerX + outerRadius * cos(radians);
-    //         float outerY = centerY + outerRadius * sin(radians);
-    //         glVertex2f(outerX, outerY);
-    //     }
-    //     glEnd();
+            float outerX = centerX + outerRadius * cos(radians);
+            float outerY = centerY + outerRadius * sin(radians);
+            glVertex2f(outerX, outerY);
+        }
+        glEnd();
 }
 
 void foodDetected(intptr_t antIndex, int target){
@@ -173,7 +160,6 @@ void* updateAntPosition(void* arg) {
 
     return NULL;
 }
-
 void drawAnts() {
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -207,6 +193,16 @@ void drawAnts() {
             glVertex2f(x, y);
         }
         glEnd();
+
+// Draw the pheromone circle if pheromone is released
+        if (ants[i].pheromone > 0) {
+            float centerX = ants[i].x + ANT_WIDTH / 2.0;
+            float centerY = ants[i].y + ANT_HEIGHT / 2.0;
+            float radius = ants[i].pheromone;
+
+            drawCircle(centerX, centerY, radius);
+        }
+
     }
 
     pthread_mutex_unlock(&antMutex);
@@ -255,6 +251,7 @@ void drawAnts() {
     glFlush();
     glutSwapBuffers();
 }
+
 void reshape(int width, int height) {
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
