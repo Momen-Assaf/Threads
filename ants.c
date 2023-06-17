@@ -12,11 +12,13 @@ typedef struct {
 typedef struct {
     float x;
     float y;
+    int portions;
+    pthread_mutex_t mutex;
 } Food;
 
 int numAnts = 50;
 int foodSpawnInterval = 1; // Default: 1 minute
-int foodEatInterval = 55;
+int foodEatInterval = 55,portionInterval = 10;
 float pheromoneInterval_0 = 50,pheromoneInterval_1 = 25,pheromoneInterval_2 = 10;
 Ant* ants;
 Food* foods;
@@ -62,14 +64,45 @@ void drawCircle(float centerX, float centerY, float outerRadius) {
         glEnd();
 }
 
+
+void removeFood(int foodIndex) {
+    pthread_mutex_lock(&foodMutex);
+
+    if (foodIndex >= 0 && foodIndex < numFoods) {
+        // Shift the array elements to remove the food
+        for (int i = foodIndex; i < numFoods - 1; i++) {
+            foods[i] = foods[i + 1];
+        }
+        numFoods--;
+        // Resize the foods array
+        foods = realloc(foods, numFoods * sizeof(Food));
+    }
+    pthread_mutex_unlock(&foodMutex);
+}
+
+
 void foodDetected(intptr_t antIndex, int target){
+    // Try to eat a portion
+    pthread_mutex_lock(&foods[target].mutex);
 
-    float dx = foods[target].x - ants[antIndex].x;
-    float dy = foods[target].y - ants[antIndex].y;
+    if (foods[target].portions > 0) {
+        foods[target].portions--;
+        float dx = foods[target].x - ants[antIndex].x;
+        float dy = foods[target].y - ants[antIndex].y;
 
-    float targetAngle = atan2(dy,dx) * (180/M_PI);
-    ants[antIndex].angle = targetAngle;
-    
+        float targetAngle = atan2(dy,dx) * (180/M_PI);
+        ants[antIndex].angle = targetAngle;
+        int temp = ants[antIndex].speed;
+        ants[antIndex].speed = 0;
+        for (int i = 0; i < 1000000000;i++);
+        ants[antIndex].speed = temp;
+
+    } else {
+        //ants[antIndex].pheromone = 0;
+        //printf("No more portions left!\n");
+        //removeFood(target);
+    }
+    pthread_mutex_unlock(&foods[target].mutex);
 }
 
 void pheromoneDetected(intptr_t antIndex,intptr_t foodIndex, intptr_t antIndex2){
@@ -352,6 +385,8 @@ int main(int argc, char** argv) {
             pheromoneInterval_1 = atoi(token);
             token = strtok(NULL,",");
             pheromoneInterval_2 = atoi(token);
+            token = strtok(NULL,",");
+            portionInterval = atoi(token);
           }
         }
     printf("The number of ants:%d\n",numAnts);
@@ -360,6 +395,8 @@ int main(int argc, char** argv) {
     printf("The pheromone interval 1 is:%.2f\n",pheromoneInterval_0);
     printf("The pheromone interval 2 is:%.2f\n",pheromoneInterval_1);
     printf("The pheromone dismiss interval is:%.2f\n",pheromoneInterval_2);
+    printf("The portion number is:%d\n",portionInterval);
+
 
     srand(time(NULL));
 
